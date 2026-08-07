@@ -1,0 +1,29 @@
+[build-system]
+requires = ["scikit-build-core>=0.9", "pybind11>=2.12"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "levelset2d-bilinear-measure"
+version = "0.1.0"
+description = "Python bindings for levelset2d_bilinear_measure: polygon-vs-bilinear crossing measurement primitives"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+]
+
+[project.optional-dependencies]
+viz = ["plotly"]
+notebook = ["jupyterlab", "plotly", "ipywidgets"]
+
+[tool.scikit-build]
+wheel.packages = ["python/levelset2d_bilinear_measure"]
+cmake.build-type = "Release"
+
+[tool.scikit-build.cmake.define]
+LEVELSET2D_BILINEAR_MEASURE_BUILD_PYTHON = "ON"
+LEVELSET2D_BILINEAR_MEASURE_BUILD_TESTS = "OFF"
+# common_geometry is pulled in transitively (add_subdirectory) and
+# defaults its own tests ON for a standalone checkout; turn that off
+# too so this build doesn't also fetch+build+install GoogleTest for
+# common_geometry's sake.
+COMMON_GEOMETRY_BUILD_TESTS = "OFF"

@@ -1,0 +1,826 @@
+<meta charset="utf-8">
+<title>Polygon vs. Direct Levelset — Probe Sweep</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --bg:            #f6f6f4;
+    --surface:        #ffffff;
+    --surface-sunken: #f0f0ed;
+    --border:         #e1e1dc;
+    --text-primary:   #14151a;
+    --text-secondary: #55565f;
+    --text-muted:     #86868c;
+
+    --mesh:      #2a78d6;
+    --mesh-fill: rgba(42, 120, 214, 0.16);
+    --bl:        #eb6834;
+    --bl-fill:   rgba(235, 104, 52, 0.16);
+
+    --inside:  #2a78d6;
+    --outside: #e34948;
+    --diverge-mid: #f0efec;
+
+    --gap-fill: rgba(134, 134, 140, 0.12);
+    --focus: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --bg:            #121316;
+      --surface:        #1b1c20;
+      --surface-sunken: #202126;
+      --border:         #2c2d33;
+      --text-primary:   #f3f3f1;
+      --text-secondary: #b6b7bf;
+      --text-muted:     #797a82;
+
+      --mesh:      #3987e5;
+      --mesh-fill: rgba(57, 135, 229, 0.20);
+      --bl:        #d95926;
+      --bl-fill:   rgba(217, 89, 38, 0.22);
+
+      --inside:  #3987e5;
+      --outside: #e66767;
+      --diverge-mid: #383835;
+
+      --gap-fill: rgba(121, 122, 130, 0.18);
+      --focus: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --bg:            #121316;
+    --surface:        #1b1c20;
+    --surface-sunken: #202126;
+    --border:         #2c2d33;
+    --text-primary:   #f3f3f1;
+    --text-secondary: #b6b7bf;
+    --text-muted:     #797a82;
+
+    --mesh:      #3987e5;
+    --mesh-fill: rgba(57, 135, 229, 0.20);
+    --bl:        #d95926;
+    --bl-fill:   rgba(217, 89, 38, 0.22);
+
+    --inside:  #3987e5;
+    --outside: #e66767;
+    --diverge-mid: #383835;
+
+    --gap-fill: rgba(121, 122, 130, 0.18);
+    --focus: #3987e5;
+  }
+  :root[data-theme="light"] .viz-root {
+    color-scheme: light;
+    --bg:            #f6f6f4;
+    --surface:        #ffffff;
+    --surface-sunken: #f0f0ed;
+    --border:         #e1e1dc;
+    --text-primary:   #14151a;
+    --text-secondary: #55565f;
+    --text-muted:     #86868c;
+
+    --mesh:      #2a78d6;
+    --mesh-fill: rgba(42, 120, 214, 0.16);
+    --bl:        #eb6834;
+    --bl-fill:   rgba(235, 104, 52, 0.16);
+
+    --inside:  #2a78d6;
+    --outside: #e34948;
+    --diverge-mid: #f0efec;
+
+    --gap-fill: rgba(134, 134, 140, 0.12);
+    --focus: #2a78d6;
+  }
+
+  .viz-root {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    padding: 40px 20px 64px;
+    display: flex;
+    justify-content: center;
+  }
+  .viz-page {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+  .mono {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  header.viz-header { display: flex; flex-direction: column; gap: 10px; }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  h1 {
+    margin: 0;
+    font-size: 27px;
+    line-height: 1.25;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  .lede {
+    margin: 0;
+    max-width: 66ch;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+  .lede code, p code, li code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, monospace;
+    font-size: 0.92em;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 0.05em 0.35em;
+  }
+
+  section.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .card h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+  }
+  .card .desc {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 70ch;
+  }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 7px; }
+  .swatch { width: 13px; height: 13px; border-radius: 3px; flex: none; }
+  .swatch.line { height: 3px; border-radius: 2px; }
+
+  .probe-layout { display: grid; grid-template-columns: minmax(0, 300px) 1fr; gap: 24px; align-items: start; }
+  @media (max-width: 640px) { .probe-layout { grid-template-columns: 1fr; } }
+
+  .cell-plot {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    column-gap: 7px;
+  }
+  .cell-yaxis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+  }
+  .cell-yaxis .axis-caption {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+  }
+  .axis-tick {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+  .cell-xaxis {
+    grid-column: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 2px 0;
+  }
+  .cell-xaxis .axis-caption {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: var(--text-secondary);
+  }
+  .cell-canvas-wrap { position: relative; width: 100%; aspect-ratio: 1 / 1; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  canvas.field { width: 100%; height: 100%; display: block; }
+  .corner-dot {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    border: 1.2px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+  .corner-idx {
+    position: absolute;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, monospace;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    pointer-events: none;
+  }
+  .marker {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    border: 1.5px solid var(--surface);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+
+  .slider-row { display: flex; flex-direction: column; gap: 8px; }
+  .slider-row .slider-label { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-secondary); }
+  .slider-row input[type="range"] { width: 100%; accent-color: var(--focus); }
+
+  .readout {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 8px;
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+  }
+  .readout-row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+  .readout-row .k { color: var(--text-secondary); }
+  .readout-row .v { font-weight: 700; }
+  .readout-row .v.mesh-v { color: var(--mesh); }
+  .readout-row .v.bl-v { color: var(--bl); }
+  .readout-row .v.diff-v { color: var(--text-primary); }
+  .status-pill {
+    align-self: flex-start;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 100px;
+  }
+  .status-pill.differ { color: var(--outside); background: color-mix(in srgb, var(--outside) 16%, transparent); }
+  .status-pill.agree { color: var(--inside); background: color-mix(in srgb, var(--inside) 16%, transparent); }
+  .status-pill.none { color: var(--text-muted); background: var(--border); }
+
+  .chart-wrap { position: relative; width: 100%; }
+  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+  .axis-label { fill: var(--text-muted); font-size: 11px; }
+  .axis-title { fill: var(--text-secondary); font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; }
+  .gridline { stroke: var(--border); stroke-width: 1; }
+  .gap-band { fill: var(--gap-fill); }
+  .coincide-line { stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 4; }
+  .region-label { fill: var(--text-muted); font-size: 11px; }
+  .line-mesh { fill: none; stroke: var(--mesh); stroke-width: 2; stroke-linecap: round; }
+  .line-bl { fill: none; stroke: var(--bl); stroke-width: 2; stroke-linecap: round; }
+  .crosshair { stroke: var(--text-muted); stroke-width: 1; }
+  .hover-dot { stroke: var(--surface); stroke-width: 1.5; }
+  .slider-marker { stroke: var(--focus); stroke-width: 1.5; opacity: 0.55; }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    min-width: 168px;
+    opacity: 0;
+    transition: opacity 90ms ease;
+    z-index: 5;
+  }
+  .tooltip .t-y { font-weight: 700; margin-bottom: 4px; }
+  .tooltip .t-row { display: flex; justify-content: space-between; gap: 14px; color: var(--text-secondary); }
+  .tooltip .t-row .v { color: var(--text-primary); font-weight: 600; }
+  .tooltip .t-none { color: var(--text-muted); font-style: normal; }
+
+  footer.viz-footer {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+  }
+  footer.viz-footer code {
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, monospace;
+  }
+</style>
+
+<div class="viz-root">
+<div class="viz-page">
+
+  <header class="viz-header">
+    <span class="eyebrow">levelset2d_polygon · single grid cell · case 5</span>
+    <h1>Sweeping a measurement line across one cell</h1>
+    <p class="lede">
+      One 2&times;2 level-set cell, corners 0 and 2 negative (inside), corners 1 and 3 positive
+      (outside, fixed at <code>+1</code>). A horizontal probe line scans from <code>y = 0</code> to
+      <code>y = 1</code>. At each height we compare where the extracted polygon's edge crosses the
+      probe against where the raw bilinear field itself crosses zero. Unlike the 3D marching-cubes
+      case, <code>levelset2d_polygon</code>'s marching squares resolves this saddle correctly (it
+      picks the topology using the true cell-center value) — so here the two methods never disagree
+      on <em>whether</em> there's a crossing, only on <em>where</em> it is, no matter how the
+      inside-corner magnitude is set.
+    </p>
+  </header>
+
+  <section class="card">
+    <h2>Move the probe line</h2>
+    <p class="desc">
+      Drag the slider to move the horizontal probe from the bottom edge to the top edge. The polygon
+      (blue) is the two straight segments <code>levelset2d_polygon</code>'s <code>MarchCell</code>
+      actually emits for this configuration; the field behind it is the true bilinear value, colored
+      blue (inside) to red (outside).
+    </p>
+    <div class="legend">
+      <div class="legend-item"><span class="swatch" style="background:var(--mesh)"></span>Polygon crossing (marching squares)</div>
+      <div class="legend-item"><span class="swatch" style="background:var(--bl)"></span>Direct levelset crossing (bilinear)</div>
+    </div>
+    <div class="probe-layout">
+      <div>
+        <div class="cell-plot">
+          <div class="cell-yaxis">
+            <span class="axis-tick">1</span>
+            <span class="axis-caption">vertical axis: y</span>
+            <span class="axis-tick">0</span>
+          </div>
+          <div class="cell-canvas-wrap" id="cellWrap">
+            <canvas class="field" id="cellCanvas"></canvas>
+          </div>
+        </div>
+        <div class="cell-xaxis">
+          <span class="axis-tick">0</span>
+          <span class="axis-caption">horizontal axis: x</span>
+          <span class="axis-tick">1</span>
+        </div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <div class="slider-row">
+          <div class="slider-label"><span>inside-corner magnitude <span class="mono" id="sLabel">s = 2.00</span></span><span>0.2 &rarr; 3.0</span></div>
+          <input type="range" id="sSlider" min="0.2" max="3.0" step="0.05" value="2.0" />
+        </div>
+        <div class="slider-row">
+          <div class="slider-label"><span>probe height <span class="mono" id="yLabel">y = 0.15</span></span><span>0 &rarr; 1</span></div>
+          <input type="range" id="ySlider" min="0" max="1" step="0.002" value="0.15" />
+        </div>
+        <div class="readout" id="readout"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Crossing position as the probe sweeps 0 &rarr; 1</h2>
+    <p class="desc" id="chartDesc"></p>
+    <div class="chart-wrap" id="chartWrap">
+      <svg class="chart" id="chartSvg" viewBox="0 0 860 410" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+  </section>
+
+  <footer class="viz-footer">
+    Corner values and topology follow <code>levelset2d_polygon</code>'s own
+    <code>detail/marching_squares.hpp</code> <code>MarchCell</code> case 5 exactly: the cell-center
+    value picks <code>B()&ndash;R()</code> / <code>T()&ndash;L()</code> when negative, or
+    <code>B()&ndash;L()</code> / <code>T()&ndash;R()</code> when positive. This page's JS
+    reproduces <code>levelset2d_bilinear_measure</code>'s
+    <code>bilinear.hpp</code>/<code>polygon_intersection.hpp</code> exactly (same
+    dense-sample-plus-bisection root find as that library's
+    <code>FindBilinearCrossings</code>) and is cross-checked against that library's own
+    Python bindings and test suite (<code>known_cases.case1_segments</code>/<code>case5_segments</code>),
+    not just hand-verified.
+  </footer>
+
+</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const P00 = [0, 0], P10 = [1, 0], P11 = [1, 1], P01 = [0, 1];
+  function interp(pa, va, pb, vb) {
+    const t = va / (va - vb);
+    return [pa[0] + t * (pb[0] - pa[0]), pa[1] + t * (pb[1] - pa[1])];
+  }
+
+  let S, V00, V10, V11, V01, CENTER, B, R, T, L, SEGMENTS, T_LO, T_HI;
+
+  function computeGeometry() {
+    V00 = -S; V10 = 1; V11 = -S; V01 = 1;
+    CENTER = (V00 + V10 + V11 + V01) / 4;
+    B = interp(P00, V00, P10, V10);
+    R = interp(P10, V10, P11, V11);
+    T = interp(P01, V01, P11, V11);
+    L = interp(P00, V00, P01, V01);
+    // case 5: center < 0 -> connected topology (B-R, T-L); center > 0 -> B-L, T-R.
+    // Matches levelset2d_polygon's MarchCell exactly for either sign.
+    SEGMENTS = CENTER < 0 ? [[B, R], [T, L]] : [[B, L], [T, R]];
+    // Both branches' segments span y in [0, S/(1+S)] and [1/(1+S), 1] (just
+    // paired with different corners), so the shared boundary heights -- where
+    // mesh and bilinear crossings coincide exactly, since they're literally
+    // reading the same edge-interpolated value -- are always these two.
+    const a = S / (1 + S), b = 1 / (1 + S);
+    T_LO = Math.min(a, b);
+    T_HI = Math.max(a, b);
+  }
+
+  function bilinear(x, y) {
+    return V00 * (1 - x) * (1 - y) + V10 * x * (1 - y) + V11 * x * y + V01 * (1 - x) * y;
+  }
+
+  function segCrossHorizontal(pa, pb, y0) {
+    const ya = pa[1], yb = pb[1];
+    if (ya === yb) return null;
+    if ((ya < y0) === (yb < y0)) return null;
+    const t = (y0 - ya) / (yb - ya);
+    return pa[0] + t * (pb[0] - pa[0]);
+  }
+  function meshCrossings(y0) {
+    const out = [];
+    for (const [a, b] of SEGMENTS) {
+      const x = segCrossHorizontal(a, b, y0);
+      if (x !== null) out.push(x);
+    }
+    return out.sort((a, b) => a - b);
+  }
+  function bilinearCrossings(y0, samples) {
+    samples = samples || 2000;
+    const f = (x) => bilinear(x, y0);
+    const roots = [];
+    let prevX = 0, prevF = f(0);
+    for (let i = 1; i <= samples; i++) {
+      const x = i / samples;
+      const fv = f(x);
+      if ((prevF < 0) !== (fv < 0)) {
+        let lo = prevX, hi = x, flo = prevF;
+        for (let iter = 0; iter < 50; iter++) {
+          const mid = 0.5 * (lo + hi);
+          const fm = f(mid);
+          if ((fm < 0) === (flo < 0)) { lo = mid; flo = fm; } else { hi = mid; }
+        }
+        roots.push(0.5 * (lo + hi));
+      }
+      prevX = x; prevF = fv;
+    }
+    return roots;
+  }
+
+  // ---- cell panel ---------------------------------------------------
+
+  const cellWrap = document.getElementById("cellWrap");
+  const sSlider = document.getElementById("sSlider");
+  const sLabel = document.getElementById("sLabel");
+  const ySlider = document.getElementById("ySlider");
+  const yLabel = document.getElementById("yLabel");
+  const readout = document.getElementById("readout");
+  const chartDesc = document.getElementById("chartDesc");
+
+  function cssVar(name) {
+    return getComputedStyle(document.querySelector(".viz-root")).getPropertyValue(name).trim();
+  }
+  function hexToRgb(hex) {
+    const n = parseInt(hex.replace("#", ""), 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  }
+  function lerpColor(a, b, t) {
+    return [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * t));
+  }
+
+  let cellCanvas, probeLineEl, markerPool;
+
+  function drawCell() {
+    const N = 200;
+    cellCanvas.width = N; cellCanvas.height = N;
+    const ctx = cellCanvas.getContext("2d");
+    const img = ctx.createImageData(N, N);
+    const inside = hexToRgb(cssVar("--inside"));
+    const outside = hexToRgb(cssVar("--outside"));
+    const mid = hexToRgb(cssVar("--diverge-mid"));
+    const maxAbs = Math.max(Math.abs(V00), Math.abs(V10), Math.abs(V11), Math.abs(V01));
+
+    for (let py = 0; py < N; py++) {
+      const y = 1 - py / (N - 1);
+      for (let px = 0; px < N; px++) {
+        const x = px / (N - 1);
+        const v = bilinear(x, y);
+        const rgb = v <= 0 ? lerpColor(mid, inside, Math.min(1, -v / maxAbs)) : lerpColor(mid, outside, Math.min(1, v / maxAbs));
+        const idx = (py * N + px) * 4;
+        img.data[idx] = rgb[0]; img.data[idx + 1] = rgb[1]; img.data[idx + 2] = rgb[2]; img.data[idx + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+
+    ctx.strokeStyle = cssVar("--mesh");
+    ctx.lineWidth = 2.4;
+    for (const [a, b] of SEGMENTS) {
+      ctx.beginPath();
+      ctx.moveTo(a[0] * (N - 1), (1 - a[1]) * (N - 1));
+      ctx.lineTo(b[0] * (N - 1), (1 - b[1]) * (N - 1));
+      ctx.stroke();
+    }
+  }
+
+  function rebuildCell() {
+    cellWrap.innerHTML = "";
+
+    cellCanvas = document.createElement("canvas");
+    cellCanvas.className = "field";
+    cellWrap.appendChild(cellCanvas);
+    drawCell();
+
+    const cornerDefs = [
+      { x: 0, y: 100, v: V00, idx: "0", ox: 11, oy: -11 },
+      { x: 100, y: 100, v: V10, idx: "1", ox: -11, oy: -11 },
+      { x: 100, y: 0, v: V11, idx: "2", ox: -11, oy: 11 },
+      { x: 0, y: 0, v: V01, idx: "3", ox: 11, oy: 11 },
+    ];
+    cornerDefs.forEach((c) => {
+      const dot = document.createElement("div");
+      dot.className = "corner-dot";
+      dot.style.left = c.x + "%";
+      dot.style.top = c.y + "%";
+      dot.style.background = c.v < 0 ? "var(--inside)" : "var(--outside)";
+      cellWrap.appendChild(dot);
+
+      const lbl = document.createElement("div");
+      lbl.className = "corner-idx";
+      lbl.style.left = c.x + "%";
+      lbl.style.top = c.y + "%";
+      lbl.style.transform = "translate(calc(-50% + " + c.ox + "px), calc(-50% + " + c.oy + "px))";
+      lbl.textContent = c.idx;
+      cellWrap.appendChild(lbl);
+    });
+
+    probeLineEl = document.createElement("div");
+    probeLineEl.style.position = "absolute";
+    probeLineEl.style.left = "0"; probeLineEl.style.right = "0";
+    probeLineEl.style.height = "0";
+    probeLineEl.style.borderTop = "1.6px solid rgba(0,0,0,0.55)";
+    cellWrap.appendChild(probeLineEl);
+
+    markerPool = [];
+  }
+
+  function getMarker(i) {
+    if (!markerPool[i]) {
+      const m = document.createElement("div");
+      m.className = "marker";
+      cellWrap.appendChild(m);
+      markerPool[i] = m;
+    }
+    return markerPool[i];
+  }
+
+  function fmt(x) { return x.toFixed(3); }
+
+  function updateChartDesc() {
+    const meetPoints = T_HI - T_LO < 0.0005
+      ? '<span class="mono">y = 0</span>, <span class="mono">y = ' + T_LO.toFixed(3) +
+        '</span>, and <span class="mono">y = 1</span> (the middle two collapse to one point at ' +
+        'this <span class="mono">s</span>)'
+      : '<span class="mono">y = 0</span>, <span class="mono">y = ' + T_LO.toFixed(3) +
+        '</span>, <span class="mono">y = ' + T_HI.toFixed(3) + '</span>, and <span class="mono">y = 1</span>';
+    chartDesc.innerHTML =
+      'Both curves are exact (dense-sample + bisection root find, same technique as ' +
+      '<code>find_mesh_crossings</code> / <code>find_trilinear_crossings</code>). They meet ' +
+      'exactly at ' + meetPoints + ' -- shared edge crossings, computed identically by both ' +
+      "methods. Between the shared points the polygon's straight segment and the field's curved " +
+      'zero-contour pull apart. In the shaded middle band neither method finds a crossing at all: ' +
+      'the whole probe line stays on one side of zero.';
+  }
+
+  function updateProbe() {
+    const y0 = parseFloat(ySlider.value);
+    yLabel.textContent = "y = " + y0.toFixed(2);
+    probeLineEl.style.top = ((1 - y0) * 100) + "%";
+
+    const meshXs = meshCrossings(y0);
+    const blXs = bilinearCrossings(y0);
+
+    let mi = 0;
+    meshXs.forEach((x) => {
+      const m = getMarker(mi++);
+      m.style.display = "block";
+      m.style.left = (x * 100) + "%";
+      m.style.top = ((1 - y0) * 100) + "%";
+      m.style.background = "var(--mesh)";
+      m.style.zIndex = 2;
+    });
+    blXs.forEach((x) => {
+      const m = getMarker(mi++);
+      m.style.display = "block";
+      m.style.left = (x * 100) + "%";
+      m.style.top = ((1 - y0) * 100) + "%";
+      m.style.background = "var(--bl)";
+      m.style.zIndex = 3;
+    });
+    for (let i = mi; i < markerPool.length; i++) markerPool[i].style.display = "none";
+
+    let statusHtml, statusClass;
+    if (meshXs.length === 0 && blXs.length === 0) {
+      statusHtml = "no crossing (both)";
+      statusClass = "none";
+    } else if (meshXs.length === blXs.length && meshXs.length > 0) {
+      const diffs = meshXs.map((x, i) => Math.abs(x - blXs[i]));
+      const maxDiff = Math.max(...diffs);
+      statusHtml = maxDiff < 0.0005 ? "coincide exactly" : "positions differ";
+      statusClass = maxDiff < 0.0005 ? "agree" : "differ";
+    } else {
+      statusHtml = "different crossing count";
+      statusClass = "differ";
+    }
+
+    readout.innerHTML =
+      '<span class="status-pill ' + statusClass + '">' + statusHtml + "</span>" +
+      '<div class="readout-row"><span class="k">polygon crossings</span><span class="v mesh-v mono">' +
+        (meshXs.length ? "[" + meshXs.map(fmt).join(", ") + "]" : "none") + "</span></div>" +
+      '<div class="readout-row"><span class="k">direct levelset crossings</span><span class="v bl-v mono">' +
+        (blXs.length ? "[" + blXs.map(fmt).join(", ") + "]" : "none") + "</span></div>" +
+      (meshXs.length === blXs.length && meshXs.length > 0
+        ? '<div class="readout-row"><span class="k">max position gap</span><span class="v diff-v mono">' +
+          fmt(Math.max(...meshXs.map((x, i) => Math.abs(x - blXs[i])))) + "</span></div>"
+        : "");
+
+    updateChartMarker(y0);
+  }
+
+  ySlider.addEventListener("input", updateProbe);
+
+  // ---- sweep chart ----------------------------------------------------
+
+  const svg = document.getElementById("chartSvg");
+  const tooltip = document.getElementById("tooltip");
+  const wrap = document.getElementById("chartWrap");
+
+  const W = 860, H = 410;
+  const M = { top: 18, right: 22, bottom: 62, left: 64 };
+  const plotW = W - M.left - M.right;
+  const plotH = H - M.top - M.bottom;
+  const xOf = (y0) => M.left + y0 * plotW;
+  const yOf = (x) => M.top + (1 - x) * plotH;
+
+  function svgEl(tag, attrs) {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const k in attrs) el.setAttribute(k, attrs[k]);
+    return el;
+  }
+
+  const N_SAMPLES = 240;
+  function buildCurve(getXs, branch) {
+    const pts = [];
+    for (let i = 0; i <= N_SAMPLES; i++) {
+      const y0 = i / N_SAMPLES;
+      const xs = getXs(y0);
+      let x = null;
+      if (branch === "lower" && xs.length) x = xs[0];
+      if (branch === "upper" && xs.length) x = xs[xs.length - 1];
+      pts.push([y0, x]);
+    }
+    return pts;
+  }
+  function pathFromPts(pts) {
+    let d = "";
+    let drawing = false;
+    for (const [y0, x] of pts) {
+      if (x === null) { drawing = false; continue; }
+      d += (drawing ? " L " : " M ") + xOf(y0) + " " + yOf(x);
+      drawing = true;
+    }
+    return d;
+  }
+
+  let sliderMarker, crosshair, dots, overlay;
+
+  function rebuildChart() {
+    svg.innerHTML = "";
+    updateChartDesc();
+
+    const yTicks = [0, 0.25, 0.5, 0.75, 1.0];
+    yTicks.forEach((t) => {
+      svg.appendChild(svgEl("line", { class: "gridline", x1: M.left, x2: W - M.right, y1: yOf(t), y2: yOf(t) }));
+      const lbl = svgEl("text", { class: "axis-label", x: M.left - 10, y: yOf(t) + 4, "text-anchor": "end" });
+      lbl.textContent = t.toFixed(2);
+      svg.appendChild(lbl);
+    });
+    const xTicks = [0, T_LO, 0.5, T_HI, 1.0];
+    xTicks.forEach((y0) => {
+      const lbl = svgEl("text", { class: "axis-label", x: xOf(y0), y: H - M.bottom + 18, "text-anchor": "middle" });
+      lbl.textContent = y0.toFixed(2);
+      svg.appendChild(lbl);
+    });
+
+    const yAxisTitle = svgEl("text", {
+      class: "axis-title", x: 0, y: 0, "text-anchor": "middle",
+      transform: "translate(16, " + (M.top + plotH / 2) + ") rotate(-90)",
+    });
+    yAxisTitle.textContent = "vertical axis: crossing position x";
+    svg.appendChild(yAxisTitle);
+    const xAxisTitle = svgEl("text", { class: "axis-title", x: M.left + plotW / 2, y: H - 8, "text-anchor": "middle" });
+    xAxisTitle.textContent = "horizontal axis: probe height y";
+    svg.appendChild(xAxisTitle);
+
+    // gap band: [T_LO, T_HI], where neither method has a crossing
+    svg.appendChild(svgEl("rect", {
+      class: "gap-band", x: xOf(T_LO), y: M.top, width: xOf(T_HI) - xOf(T_LO), height: plotH,
+    }));
+    const gapLabel = svgEl("text", { class: "region-label", x: (xOf(T_LO) + xOf(T_HI)) / 2, y: M.top + 16, "text-anchor": "middle" });
+    gapLabel.textContent = "no crossing (either method)";
+    svg.appendChild(gapLabel);
+
+    [0, T_LO, T_HI, 1].forEach((y0) => {
+      svg.appendChild(svgEl("line", { class: "coincide-line", x1: xOf(y0), x2: xOf(y0), y1: M.top, y2: H - M.bottom }));
+    });
+
+    const meshCurve = buildCurve((y0) => meshCrossings(y0), "lower");
+    const blCurve = buildCurve((y0) => bilinearCrossings(y0), "lower");
+    svg.appendChild(svgEl("path", { class: "line-mesh", d: pathFromPts(meshCurve) }));
+    svg.appendChild(svgEl("path", { class: "line-bl", d: pathFromPts(blCurve) }));
+
+    sliderMarker = svgEl("line", { class: "slider-marker", x1: 0, x2: 0, y1: M.top, y2: H - M.bottom });
+    svg.appendChild(sliderMarker);
+
+    crosshair = svgEl("line", { class: "crosshair", x1: 0, x2: 0, y1: M.top, y2: H - M.bottom, opacity: 0 });
+    svg.appendChild(crosshair);
+    dots = [0, 1].map((i) => {
+      const c = svgEl("circle", { class: "hover-dot", r: 4.5, opacity: 0, fill: i === 0 ? "var(--mesh)" : "var(--bl)" });
+      svg.appendChild(c);
+      return c;
+    });
+
+    overlay = svgEl("rect", { x: M.left, y: M.top, width: plotW, height: plotH, fill: "transparent", style: "cursor:crosshair" });
+    svg.appendChild(overlay);
+    overlay.addEventListener("mousemove", onMove);
+    overlay.addEventListener("mouseleave", () => {
+      crosshair.setAttribute("opacity", 0);
+      dots.forEach((d) => d.setAttribute("opacity", 0));
+      tooltip.style.opacity = 0;
+    });
+    overlay.addEventListener("touchmove", (e) => { onMove(e.touches[0]); e.preventDefault(); }, { passive: false });
+  }
+
+  function updateChartMarker(y0) {
+    const x = xOf(y0);
+    sliderMarker.setAttribute("x1", x);
+    sliderMarker.setAttribute("x2", x);
+  }
+
+  function onMove(evt) {
+    const rect = svg.getBoundingClientRect();
+    const scale = W / rect.width;
+    const px = (evt.clientX - rect.left) * scale;
+    const y0 = Math.max(0, Math.min(1, (px - M.left) / plotW));
+    const x = xOf(y0);
+
+    crosshair.setAttribute("x1", x); crosshair.setAttribute("x2", x); crosshair.setAttribute("opacity", 1);
+    const meshXs = meshCrossings(y0);
+    const blXs = bilinearCrossings(y0);
+    const meshY = meshXs.length ? yOf(meshXs[0]) : null;
+    const blY = blXs.length ? yOf(blXs[0]) : null;
+    dots[0].setAttribute("cx", x); dots[1].setAttribute("cx", x);
+    if (meshY !== null) { dots[0].setAttribute("cy", meshY); dots[0].setAttribute("opacity", 1); } else dots[0].setAttribute("opacity", 0);
+    if (blY !== null) { dots[1].setAttribute("cy", blY); dots[1].setAttribute("opacity", 1); } else dots[1].setAttribute("opacity", 0);
+
+    tooltip.innerHTML =
+      '<div class="t-y mono">y = ' + y0.toFixed(3) + "</div>" +
+      '<div class="t-row"><span>polygon</span><span class="v mono' + (meshXs.length ? "" : " t-none") + '">' +
+        (meshXs.length ? meshXs.map((v) => v.toFixed(3)).join(", ") : "none") + "</span></div>" +
+      '<div class="t-row"><span>direct levelset</span><span class="v mono' + (blXs.length ? "" : " t-none") + '">' +
+        (blXs.length ? blXs.map((v) => v.toFixed(3)).join(", ") : "none") + "</span></div>";
+    tooltip.style.opacity = 1;
+    const wrapRect = wrap.getBoundingClientRect();
+    let left = (x / W) * wrapRect.width + 14;
+    if (left + 180 > wrapRect.width) left = (x / W) * wrapRect.width - 190;
+    tooltip.style.left = left + "px";
+    tooltip.style.top = "10px";
+
+    ySlider.value = y0;
+    updateProbe();
+  }
+
+  function onSChange() {
+    S = parseFloat(sSlider.value);
+    sLabel.textContent = "s = " + S.toFixed(2);
+    computeGeometry();
+    rebuildCell();
+    rebuildChart();
+    updateProbe();
+  }
+  sSlider.addEventListener("input", onSChange);
+
+  onSChange();
+})();
+</script>

@@ -1,0 +1,14 @@
+build/
+*.o
+*.so
+.DS_Store
+
+# Python
+.venv/
+__pycache__/
+*.egg-info/
+dist/
+.ipynb_checkpoints/
+_skbuild/
+.pytest_cache/
+uv.lock
