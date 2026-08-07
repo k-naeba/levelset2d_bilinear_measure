@@ -20,7 +20,6 @@
     --outside: #e34948;
     --diverge-mid: #f0efec;
 
-    --gap-fill: rgba(134, 134, 140, 0.12);
     --focus: #2a78d6;
   }
   @media (prefers-color-scheme: dark) {
@@ -43,7 +42,6 @@
       --outside: #e66767;
       --diverge-mid: #383835;
 
-      --gap-fill: rgba(121, 122, 130, 0.18);
       --focus: #3987e5;
     }
   }
@@ -66,7 +64,6 @@
     --outside: #e66767;
     --diverge-mid: #383835;
 
-    --gap-fill: rgba(121, 122, 130, 0.18);
     --focus: #3987e5;
   }
   :root[data-theme="light"] .viz-root {
@@ -88,7 +85,6 @@
     --outside: #e34948;
     --diverge-mid: #f0efec;
 
-    --gap-fill: rgba(134, 134, 140, 0.12);
     --focus: #2a78d6;
   }
 
@@ -245,6 +241,8 @@
   .slider-row { display: flex; flex-direction: column; gap: 8px; }
   .slider-row .slider-label { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--text-secondary); }
   .slider-row input[type="range"] { width: 100%; accent-color: var(--focus); }
+  .corner-sliders { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
+  @media (max-width: 420px) { .corner-sliders { grid-template-columns: 1fr; } }
 
   .readout {
     display: flex;
@@ -279,9 +277,6 @@
   .axis-label { fill: var(--text-muted); font-size: 11px; }
   .axis-title { fill: var(--text-secondary); font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; }
   .gridline { stroke: var(--border); stroke-width: 1; }
-  .gap-band { fill: var(--gap-fill); }
-  .coincide-line { stroke: var(--text-muted); stroke-width: 1.5; stroke-dasharray: 4 4; }
-  .region-label { fill: var(--text-muted); font-size: 11px; }
   .line-mesh { fill: none; stroke: var(--mesh); stroke-width: 2; stroke-linecap: round; }
   .line-bl { fill: none; stroke: var(--bl); stroke-width: 2; stroke-linecap: round; }
   .crosshair { stroke: var(--text-muted); stroke-width: 1; }
@@ -324,27 +319,30 @@
 <div class="viz-page">
 
   <header class="viz-header">
-    <span class="eyebrow">levelset2d_polygon · single grid cell · case 5</span>
+    <span class="eyebrow">levelset2d_polygon · single grid cell · all 16 MarchCell cases</span>
     <h1>Sweeping a measurement line across one cell</h1>
     <p class="lede">
-      One 2&times;2 level-set cell, corners 0 and 2 negative (inside), corners 1 and 3 positive
-      (outside, fixed at <code>+1</code>). A horizontal probe line scans from <code>y = 0</code> to
-      <code>y = 1</code>. At each height we compare where the extracted polygon's edge crosses the
-      probe against where the raw bilinear field itself crosses zero. Unlike the 3D marching-cubes
-      case, <code>levelset2d_polygon</code>'s marching squares resolves this saddle correctly (it
-      picks the topology using the true cell-center value) — so here the two methods never disagree
-      on <em>whether</em> there's a crossing, only on <em>where</em> it is, no matter how the
-      inside-corner magnitude is set.
+      One 2&times;2 level-set cell, all four corner values independently adjustable. A horizontal
+      probe line scans from <code>y = 0</code> to <code>y = 1</code>. At each height we compare
+      where the extracted polygon's edge crosses the probe against where the raw bilinear field
+      itself crosses zero. Every corner-sign combination runs through the same
+      <code>MarchCell</code> switch <code>levelset2d_polygon</code> itself uses (all 16 cases, not
+      just the saddle) -- including, for the two ambiguous saddle cases (5 and 10), the true
+      cell-center-value disambiguation. That's why, unlike the 3D marching-cubes case, the two
+      methods here never disagree on <em>whether</em> there's a crossing, only on <em>where</em> it
+      is, no matter how the four corners are set.
     </p>
   </header>
 
   <section class="card">
     <h2>Move the probe line</h2>
     <p class="desc">
-      Drag the slider to move the horizontal probe from the bottom edge to the top edge. The polygon
-      (blue) is the two straight segments <code>levelset2d_polygon</code>'s <code>MarchCell</code>
-      actually emits for this configuration; the field behind it is the true bilinear value, colored
-      blue (inside) to red (outside).
+      Drag each corner slider to set that corner's level-set value (negative = inside, positive =
+      outside); drag the probe slider to move the horizontal probe from the bottom edge to the top
+      edge. The polygon (blue) is whichever straight segment(s) -- zero, one, or two, depending on
+      which of <code>MarchCell</code>'s 16 cases the current corner signs land on --
+      <code>levelset2d_polygon</code>'s <code>MarchCell</code> actually emits for this configuration;
+      the field behind it is the true bilinear value, colored blue (inside) to red (outside).
     </p>
     <div class="legend">
       <div class="legend-item"><span class="swatch" style="background:var(--mesh)"></span>Polygon crossing (marching squares)</div>
@@ -369,9 +367,23 @@
         </div>
       </div>
       <div style="display:flex; flex-direction:column; gap:16px;">
-        <div class="slider-row">
-          <div class="slider-label"><span>inside-corner magnitude <span class="mono" id="sLabel">s = 2.00</span></span><span>0.2 &rarr; 3.0</span></div>
-          <input type="range" id="sSlider" min="0.2" max="3.0" step="0.05" value="2.0" />
+        <div class="corner-sliders">
+          <div class="slider-row">
+            <div class="slider-label"><span>corner 0 <span class="mono" id="v0Label">v0 = -2.00</span></span></div>
+            <input type="range" id="v0Slider" min="-3.0" max="3.0" step="0.1" value="-2.0" />
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>corner 1 <span class="mono" id="v1Label">v1 = 1.00</span></span></div>
+            <input type="range" id="v1Slider" min="-3.0" max="3.0" step="0.1" value="1.0" />
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>corner 2 <span class="mono" id="v2Label">v2 = -2.00</span></span></div>
+            <input type="range" id="v2Slider" min="-3.0" max="3.0" step="0.1" value="-2.0" />
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>corner 3 <span class="mono" id="v3Label">v3 = 1.00</span></span></div>
+            <input type="range" id="v3Slider" min="-3.0" max="3.0" step="0.1" value="1.0" />
+          </div>
         </div>
         <div class="slider-row">
           <div class="slider-label"><span>probe height <span class="mono" id="yLabel">y = 0.15</span></span><span>0 &rarr; 1</span></div>
@@ -392,11 +404,11 @@
   </section>
 
   <footer class="viz-footer">
-    Corner values and topology follow <code>levelset2d_polygon</code>'s own
-    <code>detail/marching_squares.hpp</code> <code>MarchCell</code> case 5 exactly: the cell-center
-    value picks <code>B()&ndash;R()</code> / <code>T()&ndash;L()</code> when negative, or
-    <code>B()&ndash;L()</code> / <code>T()&ndash;R()</code> when positive. This page's JS
-    reproduces <code>levelset2d_bilinear_measure</code>'s
+    Topology follows <code>levelset2d_polygon</code>'s own
+    <code>detail/marching_squares.hpp</code> <code>MarchCell</code> exactly -- the full 16-case
+    switch on corner signs, including both ambiguous saddle cases' (5 and 10) true
+    cell-center-value disambiguation, not just the fixed case-5 configuration this page used to
+    show. This page's JS reproduces <code>levelset2d_bilinear_measure</code>'s
     <code>bilinear.hpp</code>/<code>polygon_intersection.hpp</code> exactly (same
     dense-sample-plus-bisection root find as that library's
     <code>FindBilinearCrossings</code>) and is cross-checked against that library's own
@@ -417,25 +429,41 @@
     return [pa[0] + t * (pb[0] - pa[0]), pa[1] + t * (pb[1] - pa[1])];
   }
 
-  let S, V00, V10, V11, V01, CENTER, B, R, T, L, SEGMENTS, T_LO, T_HI;
+  let V00, V10, V11, V01, SEGMENTS;
 
+  // Full port of levelset2d_polygon's detail/marching_squares.hpp MarchCell:
+  // the same 4-bit case index (bit c set when corner c is inside), the same
+  // 12 unambiguous single-segment cases, and the same true-center-value
+  // disambiguation for the two ambiguous saddle cases (5 and 10).
   function computeGeometry() {
-    V00 = -S; V10 = 1; V11 = -S; V01 = 1;
-    CENTER = (V00 + V10 + V11 + V01) / 4;
-    B = interp(P00, V00, P10, V10);
-    R = interp(P10, V10, P11, V11);
-    T = interp(P01, V01, P11, V11);
-    L = interp(P00, V00, P01, V01);
-    // case 5: center < 0 -> connected topology (B-R, T-L); center > 0 -> B-L, T-R.
-    // Matches levelset2d_polygon's MarchCell exactly for either sign.
-    SEGMENTS = CENTER < 0 ? [[B, R], [T, L]] : [[B, L], [T, R]];
-    // Both branches' segments span y in [0, S/(1+S)] and [1/(1+S), 1] (just
-    // paired with different corners), so the shared boundary heights -- where
-    // mesh and bilinear crossings coincide exactly, since they're literally
-    // reading the same edge-interpolated value -- are always these two.
-    const a = S / (1 + S), b = 1 / (1 + S);
-    T_LO = Math.min(a, b);
-    T_HI = Math.max(a, b);
+    const in00 = V00 < 0, in10 = V10 < 0, in11 = V11 < 0, in01 = V01 < 0;
+    const caseIndex = (in00 ? 1 : 0) | (in10 ? 2 : 0) | (in11 ? 4 : 0) | (in01 ? 8 : 0);
+
+    const B = interp(P00, V00, P10, V10);
+    const R = interp(P10, V10, P11, V11);
+    const T = interp(P01, V01, P11, V11);
+    const L = interp(P00, V00, P01, V01);
+    const center = (V00 + V10 + V11 + V01) / 4;
+
+    switch (caseIndex) {
+      case 0: case 15: SEGMENTS = []; break;
+      case 1: SEGMENTS = [[B, L]]; break;
+      case 2: SEGMENTS = [[R, B]]; break;
+      case 3: SEGMENTS = [[R, L]]; break;
+      case 4: SEGMENTS = [[T, R]]; break;
+      case 6: SEGMENTS = [[T, B]]; break;
+      case 7: SEGMENTS = [[T, L]]; break;
+      case 8: SEGMENTS = [[L, T]]; break;
+      case 9: SEGMENTS = [[B, T]]; break;
+      case 11: SEGMENTS = [[R, T]]; break;
+      case 12: SEGMENTS = [[L, R]]; break;
+      case 13: SEGMENTS = [[B, R]]; break;
+      case 14: SEGMENTS = [[L, B]]; break;
+      // corners 0,2 inside; 1,3 outside -- ambiguous, disambiguated by center.
+      case 5: SEGMENTS = center < 0 ? [[B, R], [T, L]] : [[B, L], [T, R]]; break;
+      // corners 1,3 inside; 0,2 outside -- the complementary saddle.
+      case 10: SEGMENTS = center < 0 ? [[L, B], [R, T]] : [[R, B], [L, T]]; break;
+    }
   }
 
   function bilinear(x, y) {
@@ -482,8 +510,8 @@
   // ---- cell panel ---------------------------------------------------
 
   const cellWrap = document.getElementById("cellWrap");
-  const sSlider = document.getElementById("sSlider");
-  const sLabel = document.getElementById("sLabel");
+  const cornerSliders = [0, 1, 2, 3].map((i) => document.getElementById("v" + i + "Slider"));
+  const cornerLabels = [0, 1, 2, 3].map((i) => document.getElementById("v" + i + "Label"));
   const ySlider = document.getElementById("ySlider");
   const yLabel = document.getElementById("yLabel");
   const readout = document.getElementById("readout");
@@ -588,19 +616,13 @@
   function fmt(x) { return x.toFixed(3); }
 
   function updateChartDesc() {
-    const meetPoints = T_HI - T_LO < 0.0005
-      ? '<span class="mono">y = 0</span>, <span class="mono">y = ' + T_LO.toFixed(3) +
-        '</span>, and <span class="mono">y = 1</span> (the middle two collapse to one point at ' +
-        'this <span class="mono">s</span>)'
-      : '<span class="mono">y = 0</span>, <span class="mono">y = ' + T_LO.toFixed(3) +
-        '</span>, <span class="mono">y = ' + T_HI.toFixed(3) + '</span>, and <span class="mono">y = 1</span>';
     chartDesc.innerHTML =
       'Both curves are exact (dense-sample + bisection root find, same technique as ' +
-      '<code>find_mesh_crossings</code> / <code>find_trilinear_crossings</code>). They meet ' +
-      'exactly at ' + meetPoints + ' -- shared edge crossings, computed identically by both ' +
-      "methods. Between the shared points the polygon's straight segment and the field's curved " +
-      'zero-contour pull apart. In the shaded middle band neither method finds a crossing at all: ' +
-      'the whole probe line stays on one side of zero.';
+      '<code>find_polygon_crossings</code> / <code>find_bilinear_crossings</code>). Wherever a ' +
+      "curve breaks, that method finds no crossing at that probe height at all -- the whole probe " +
+      'line stays on one side of zero there for that method. Where a curve is present, watch it ' +
+      "pull away from the other method's -- the polygon's straight segment(s) vs. the field's " +
+      'curved zero-contour -- as you drag the corner sliders above.';
   }
 
   function updateProbe() {
@@ -716,7 +738,7 @@
       lbl.textContent = t.toFixed(2);
       svg.appendChild(lbl);
     });
-    const xTicks = [0, T_LO, 0.5, T_HI, 1.0];
+    const xTicks = [0, 0.25, 0.5, 0.75, 1.0];
     xTicks.forEach((y0) => {
       const lbl = svgEl("text", { class: "axis-label", x: xOf(y0), y: H - M.bottom + 18, "text-anchor": "middle" });
       lbl.textContent = y0.toFixed(2);
@@ -732,18 +754,6 @@
     const xAxisTitle = svgEl("text", { class: "axis-title", x: M.left + plotW / 2, y: H - 8, "text-anchor": "middle" });
     xAxisTitle.textContent = "horizontal axis: probe height y";
     svg.appendChild(xAxisTitle);
-
-    // gap band: [T_LO, T_HI], where neither method has a crossing
-    svg.appendChild(svgEl("rect", {
-      class: "gap-band", x: xOf(T_LO), y: M.top, width: xOf(T_HI) - xOf(T_LO), height: plotH,
-    }));
-    const gapLabel = svgEl("text", { class: "region-label", x: (xOf(T_LO) + xOf(T_HI)) / 2, y: M.top + 16, "text-anchor": "middle" });
-    gapLabel.textContent = "no crossing (either method)";
-    svg.appendChild(gapLabel);
-
-    [0, T_LO, T_HI, 1].forEach((y0) => {
-      svg.appendChild(svgEl("line", { class: "coincide-line", x1: xOf(y0), x2: xOf(y0), y1: M.top, y2: H - M.bottom }));
-    });
 
     const meshCurve = buildCurve((y0) => meshCrossings(y0), "lower");
     const blCurve = buildCurve((y0) => bilinearCrossings(y0), "lower");
@@ -811,16 +821,17 @@
     updateProbe();
   }
 
-  function onSChange() {
-    S = parseFloat(sSlider.value);
-    sLabel.textContent = "s = " + S.toFixed(2);
+  function onCornersChange() {
+    const values = cornerSliders.map((s) => parseFloat(s.value));
+    [V00, V10, V11, V01] = values;
+    values.forEach((v, i) => { cornerLabels[i].textContent = "v" + i + " = " + v.toFixed(2); });
     computeGeometry();
     rebuildCell();
     rebuildChart();
     updateProbe();
   }
-  sSlider.addEventListener("input", onSChange);
+  cornerSliders.forEach((s) => s.addEventListener("input", onCornersChange));
 
-  onSChange();
+  onCornersChange();
 })();
 </script>

@@ -50,40 +50,41 @@ cd build && ctest --output-on-failure
   closed loops).
 
 [`docs/polygon_vs_bilinear_probe.html`](docs/polygon_vs_bilinear_probe.html)
-visualizes both, on a single grid cell where corners 0 and 2 are inside
-(negative, magnitude `s`) and corners 1, 3 are outside (fixed at `+1`):
-drag a horizontal probe line across the cell and watch the two methods'
-crossing positions pull apart, then a chart of that same crossing
-position swept continuously across the full probe range. A second slider
-exposes the inside-corner magnitude `s` itself -- `MarchCell`'s topology
-branch flips at `s = 1` (which corner pair the two segments connect), but
-the two shared-boundary heights stay at `min(s, 1)/(1+s)` and
-`max(s, 1)/(1+s)` either way, so unlike
+visualizes both, on a single grid cell whose four corner values are each
+independently slider-controlled: drag a horizontal probe line across the
+cell and watch the two methods' crossing positions pull apart, then a
+chart of that same crossing position swept continuously across the full
+probe range. Every corner-sign combination runs through the same full
+16-case `MarchCell` switch `levelset2d_polygon` itself uses (not just the
+saddle case this page used to hardcode) -- including, for the two
+ambiguous saddle cases (5 and 10), the true cell-center-value
+disambiguation. That's why, unlike
 `levelset3d_trilinear_measure`'s fixed marching-cubes triangulation,
-`levelset2d_polygon`'s marching squares always resolves the saddle
-ambiguity correctly (via the true cell-center value): the two methods
-disagree only on *where* the crossing is, never on *whether* one exists,
-for any `s`. (This page's JS reproduces this library's exact math --
+`levelset2d_polygon`'s marching squares always resolves any saddle
+ambiguity correctly: the two methods disagree only on *where* the
+crossing is, never on *whether* one exists, no matter how the four
+corners are set. (This page's JS reproduces this library's exact math --
 see "Python bindings" below for how that's verified, not just asserted.)
 
-<img src="docs/images/polygon_vs_bilinear_probe_preview.png" width="860" alt="2D cell view with the probe at s=2, y=0.15, showing the polygon and bilinear crossings at slightly different x positions">
+<img src="docs/images/polygon_vs_bilinear_probe_preview.png" width="860" alt="2D cell view with corners set to a case-5 saddle (v0=-2, v1=1, v2=-2, v3=1) and the probe at y=0.15, showing the polygon and bilinear crossings at slightly different x positions">
 
-*Shown at `s = 2.00`, `y = 0.15`. Want to sweep the probe and the corner magnitude yourself?* [**Open it live**](https://k-naeba.github.io/levelset2d_bilinear_measure/polygon_vs_bilinear_probe.html).
+*Shown with corners `v0=-2.00, v1=1.00, v2=-2.00, v3=1.00` (the classic saddle case), probe at `y = 0.15`. Want to set each corner and sweep the probe yourself?* [**Open it live**](https://k-naeba.github.io/levelset2d_bilinear_measure/polygon_vs_bilinear_probe.html).
 
-The "crossing position as the probe sweeps" chart from this page, on its own. First, at
-`s = 0.90`, just shy of the interesting threshold -- an easier read to get oriented: both
-curves trace roughly the same rise, but pull apart noticeably around the middle before the
-gap band, where the polygon's straight edge dives to `x = 0` while the bilinear crossing
-eases off more gradually.
+The "crossing position as the probe sweeps" chart from this page, on its own, for two
+saddle configurations along the classic `v0=v2=-s, v1=v3=1` family (still fully reachable
+via the corner sliders). First, at `s = 0.90`, just shy of the interesting threshold -- an
+easier read to get oriented: both curves trace roughly the same rise, but pull apart
+noticeably around the middle, and each has its own height range where it finds no crossing
+at all.
 
-<img src="docs/images/polygon_vs_bilinear_sweep_chart_s09.png" width="860" alt="Crossing position vs. probe height y at s=0.90, showing the polygon and bilinear curves diverging noticeably around the middle of the sweep">
+<img src="docs/images/polygon_vs_bilinear_sweep_chart_s09.png" width="860" alt="Crossing position vs. probe height y at v0=v2=-0.90, v1=v3=1, showing the polygon and bilinear curves diverging noticeably around the middle of the sweep">
 
 Now push `s` to exactly `1.00` -- the asymptotic-decider threshold itself -- and the gap
 becomes as large as it ever gets. At `s = 1` the bilinear field factors into
 `(2x-1)(1-2y)`, so the true crossing freezes at `x = 0.5` for the *entire* sweep, while the
 polygon's straight-edge approximation still swings across almost the full width of the cell.
 
-<img src="docs/images/polygon_vs_bilinear_sweep_chart.png" width="860" alt="Crossing position vs. probe height y at s=1.00, showing the bilinear crossing frozen at x=0.5 while the polygon crossing swings across nearly the whole cell">
+<img src="docs/images/polygon_vs_bilinear_sweep_chart.png" width="860" alt="Crossing position vs. probe height y at v0=v2=-1.00, v1=v3=1, showing the bilinear crossing frozen at x=0.5 while the polygon crossing swings across nearly the whole cell">
 
 This page is self-contained (no build step, no server) and served
 directly from this repo's `docs/` folder via
