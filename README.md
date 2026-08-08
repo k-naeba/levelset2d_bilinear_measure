@@ -19,6 +19,18 @@ in kind, not just in dimension -- see "What's here" below for why this
 project's saddle case never produces the topological disagreement that
 one documents.
 
+## Background: Marching Squares case topology
+
+<img src="docs/images/marching_squares_cases.svg" width="640" alt="Marching Squares: a single cell's linear interpolation along one edge, plus all 16 corner inside/outside cases and their contour segments">
+
+The 16 corner-sign combinations shown here are exactly the `case_index`
+values `levelset2d_polygon`'s `MarchCell` switches on (see
+`detail/marching_squares.hpp`), and this library's `bilinear.hpp`/
+`polygon_intersection.hpp` are the measurement primitives for comparing
+that fixed-topology extraction against the raw bilinear field it came
+from -- see `docs/polygon_vs_bilinear_probe.html` below for that
+comparison, fully interactive.
+
 ## Requirements
 
 - CMake >= 3.20
