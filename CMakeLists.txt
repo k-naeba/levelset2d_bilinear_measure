@@ -33,11 +33,14 @@ target_compile_features(levelset2d_bilinear_measure INTERFACE cxx_std_17)
 # transitively Eigen's) include paths too.
 target_link_libraries(levelset2d_bilinear_measure INTERFACE common_geometry)
 
-option(LEVELSET2D_BILINEAR_MEASURE_BUILD_TESTS "Build tests" ON)
-if(LEVELSET2D_BILINEAR_MEASURE_BUILD_TESTS)
-  enable_testing()
-  add_subdirectory(tests)
-endif()
+# No tests/ subdirectory of its own: the measurement primitives this
+# project used to implement locally now live in common_geometry (see
+# include/levelset2d_bilinear_measure/levelset2d_bilinear_measure.hpp),
+# so their coverage lives in common_geometry's own test suite. Still need
+# enable_testing() here (not just inside common_geometry's own
+# CMakeLists.txt) for `ctest` run from this project's build directory to
+# pick those tests up.
+enable_testing()
 
 # Off by default: a plain `cmake -B build && cmake --build build` (e.g.
 # from build_all.sh) has no reason to require Python/pybind11. The

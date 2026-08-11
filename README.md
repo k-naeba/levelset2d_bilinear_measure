@@ -1,9 +1,17 @@
 # levelset2d_bilinear_measure
 
-A C++17 header-only library of measurement/comparison primitives for 2D
-level-set-derived geometry (`ns_cg::Edge2d`) -- e.g. finding where a probe
-line crosses a polygon's boundary segments, and comparing that against
-the raw bilinear interpolant the boundary was extracted from.
+Docs, examples, and Python bindings for comparing 2D level-set-derived
+geometry (`ns_cg::Edge2d`) against the raw bilinear field it was
+extracted from -- e.g. finding where a probe line crosses a polygon's
+boundary segments vs. where the bilinear interpolant itself crosses
+zero. The measurement primitives themselves
+(`BilinearValue`/`FindBilinearCrossings`,
+`RaySegmentIntersect`/`FindPolygonCrossings`) now live in
+[`common_geometry`](../common_geometry) (`ns_cg::`), consolidated there
+alongside the 3D analogs `levelset3d_trilinear_measure` uses -- this
+project re-exports them (see
+`include/levelset2d_bilinear_measure/levelset2d_bilinear_measure.hpp`)
+and builds the docs/Python layer on top.
 
 Depends only on [`common_geometry`](../common_geometry) -- not on
 `levelset2d_polygon` -- and operates purely on already-extracted geometry
@@ -25,11 +33,11 @@ one documents.
 
 The 16 corner-sign combinations shown here are exactly the `case_index`
 values `levelset2d_polygon`'s `MarchCell` switches on (see
-`detail/marching_squares.hpp`), and this library's `bilinear.hpp`/
-`polygon_intersection.hpp` are the measurement primitives for comparing
-that fixed-topology extraction against the raw bilinear field it came
-from -- see `docs/polygon_vs_bilinear_probe.html` below for that
-comparison, fully interactive.
+`detail/marching_squares.hpp`), and `common_geometry`'s
+`bilinear.hpp`/`polygon_intersection.hpp` are the measurement primitives
+for comparing that fixed-topology extraction against the raw bilinear
+field it came from -- see `docs/polygon_vs_bilinear_probe.html` below
+for that comparison, fully interactive.
 
 ## Requirements
 
@@ -49,15 +57,20 @@ cd build && ctest --output-on-failure
 
 ## What's here
 
-- `bilinear.hpp`: `BilinearValue` (4 corner values -> value at any point)
-  and `FindBilinearCrossings` (every zero-crossing of that interpolant
-  along an arbitrary probe line, via dense sampling + bisection -- works
-  for any line direction, since the interpolant restricted to a line is a
-  quadratic in general, not just the linear case an axis-aligned probe
-  degenerates to).
-- `polygon_intersection.hpp`: `RaySegmentIntersect` (2D ray-segment
-  intersection) and `FindPolygonCrossings` (every crossing of a probe
-  line against a `std::vector<ns_cg::Edge2d>` -- the raw segment soup
+The measurement primitives live in `common_geometry` now; this project
+re-exports them under their original names via
+`levelset2d_bilinear_measure.hpp`, so downstream code and the Python
+bindings below don't need to change:
+
+- `ns_cg::BilinearValue` (4 corner values -> value at any point) and
+  `ns_cg::FindBilinearCrossings` (every zero-crossing of that
+  interpolant along an arbitrary probe line, via dense sampling +
+  bisection -- works for any line direction, since the interpolant
+  restricted to a line is a quadratic in general, not just the linear
+  case an axis-aligned probe degenerates to).
+- `ns_cg::RaySegmentIntersect` (2D ray-segment intersection) and
+  `ns_cg::FindPolygonCrossings` (every crossing of a probe line against
+  a `std::vector<ns_cg::Edge2d>` -- the raw segment soup
   `levelset2d_polygon`'s `MarchCell` emits, before it's linked into
   closed loops).
 
@@ -121,8 +134,8 @@ re-exported as `levelset2d_bilinear_measure`) exposes this library's C++ API to
 Python for interactive analysis in Jupyter, built via
 [scikit-build-core](https://github.com/scikit-build/scikit-build-core).
 
-Scoped exactly like the C++ library itself: `common_geometry` types
-(`Edge2d`) and this project's own functions
+Scoped exactly like the C++ side: `common_geometry` types (`Edge2d`) and
+the measurement functions common_geometry now implements
 (`bilinear_value`, `find_bilinear_crossings`, `ray_segment_intersect`,
 `find_polygon_crossings`) only -- no extraction algorithm (no marching
 squares) is bound or depended on here. A small pure-Python helper module,
